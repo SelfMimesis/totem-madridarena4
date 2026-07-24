@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#050611">
+    <meta name="theme-color" content="#0b0f13">
     <meta
       name="description"
       content="Interfaz táctil 4K para el tótem de Embarkation Zone."
@@ -109,9 +109,9 @@
             <button class="svg-hotspot svg-hotspot--right svg-right--05" type="button" data-action="LIFELINE" aria-label="Lifeline" aria-pressed="false"></button>
           </nav>
 
-          <div class="svg-utility-actions" role="group" aria-label="Utilidades">
-            <button class="svg-hotspot svg-hotspot--utility svg-utility--01" type="button" data-utility="ARCHIVE" aria-label="Abrir archivo de datos"></button>
-            <button class="svg-hotspot svg-hotspot--utility svg-utility--02" type="button" data-utility="TRANSROLL" aria-label="Activar Transroll"></button>
+          <div class="svg-utility-actions" role="group" aria-label="Acceso al terminal de pago">
+            <button class="svg-hotspot svg-hotspot--utility svg-utility--01" type="button" data-utility="ARCHIVE" aria-label="Abrir carrusel de pago"></button>
+            <button class="svg-hotspot svg-hotspot--utility svg-utility--02" type="button" data-utility="TRANSROLL" aria-label="Abrir carrusel de pago"></button>
           </div>
 
           <div class="button-fx-layer" id="buttonFxLayer" aria-hidden="true"></div>
@@ -126,14 +126,6 @@
           aria-hidden="true"
         >
           <div class="notification-blur" aria-hidden="true"></div>
-          <div class="map-marker-layer" aria-hidden="true">
-            <span class="map-route" id="mapRoute"></span>
-            <div class="map-marker" id="mapMarker">
-              <span class="map-marker__radar"></span>
-              <span class="map-marker__pin"><i></i></span>
-              <span class="map-marker__label" id="mapMarkerLabel">EZ-01</span>
-            </div>
-          </div>
           <article class="system-notification">
             <div class="notification-scan" aria-hidden="true"></div>
             <div class="notification-beacon" aria-hidden="true">
@@ -149,6 +141,184 @@
             </div>
             <div class="notification-code" id="notificationCode">EZ // 000001 // ONLINE</div>
           </article>
+        </section>
+
+        <section
+          class="payment-flow"
+          id="paymentFlow"
+          role="dialog"
+          aria-modal="true"
+          aria-hidden="true"
+          aria-labelledby="paymentTitle"
+          inert
+        >
+          <div class="payment-frame" aria-hidden="true"></div>
+          <button class="payment-close" id="paymentClose" type="button" aria-label="Cerrar pago">
+            <span></span><span></span>
+          </button>
+
+          <header class="payment-header">
+            <div>
+              <span class="payment-kicker">CURRENCY EXCHANGE // SECURE CHANNEL</span>
+              <h2 id="paymentTitle">PAYMENT TERMINAL</h2>
+            </div>
+            <div class="payment-status"><i></i> ENCRYPTED</div>
+          </header>
+
+          <div class="payment-steps" aria-label="Progreso del pago">
+            <span class="is-active" data-payment-step="cards"><b>01</b> CARD</span>
+            <i></i>
+            <span data-payment-step="pin"><b>02</b> DATA</span>
+            <i></i>
+            <span data-payment-step="fingerprint"><b>03</b> BIO-ID</span>
+            <i></i>
+            <span data-payment-step="success"><b>04</b> DONE</span>
+          </div>
+
+          <div class="payment-screen-stack">
+            <section class="payment-screen payment-screen--cards is-active" data-payment-screen="cards">
+              <div class="payment-screen-heading">
+                <span>01 // SELECT PAYMENT TOKEN</span>
+                <h3>CHOOSE CURRENCY CARD</h3>
+                <p>Desliza el carrusel y selecciona el crédito para la secuencia de embarque.</p>
+              </div>
+
+              <div class="payment-carousel" id="paymentCarousel">
+                <button class="payment-carousel-arrow payment-carousel-arrow--prev" id="paymentPrev" type="button" aria-label="Tarjeta anterior">
+                  <span></span>
+                </button>
+                <div class="payment-card-stack">
+                  <button class="payment-card payment-card--silver is-active" type="button" data-payment-card="0" aria-label="Currency Card, 35.50 créditos" aria-pressed="true">
+                    <img src="assets/currency-card.png" alt="Currency Card plateada">
+                    <span>35.50 CREDITS</span>
+                  </button>
+                  <button class="payment-card payment-card--violet is-next" type="button" data-payment-card="1" aria-label="Currency Card, 72.04 créditos" aria-pressed="false">
+                    <img src="assets/currency-card.png" alt="">
+                    <span>72.04 CREDITS</span>
+                  </button>
+                  <button class="payment-card payment-card--blue is-prev" type="button" data-payment-card="2" aria-label="Currency Card, 108.60 créditos" aria-pressed="false">
+                    <img src="assets/currency-card.png" alt="">
+                    <span>108.60 CREDITS</span>
+                  </button>
+                </div>
+                <button class="payment-carousel-arrow payment-carousel-arrow--next" id="paymentNext" type="button" aria-label="Tarjeta siguiente">
+                  <span></span>
+                </button>
+              </div>
+
+              <div class="payment-carousel-meta">
+                <div>
+                  <span>SELECTED TOKEN</span>
+                  <strong id="paymentPlanName">CURRENCY // SILVER</strong>
+                </div>
+                <div>
+                  <span>AVAILABLE CREDIT</span>
+                  <strong id="paymentPlanCredit">35.50</strong>
+                </div>
+                <div class="payment-carousel-dots" aria-hidden="true">
+                  <i class="is-active"></i><i></i><i></i>
+                </div>
+              </div>
+
+              <button class="payment-primary" id="paymentCardConfirm" type="button">
+                USE SELECTED CARD <span>→</span>
+              </button>
+            </section>
+
+            <section class="payment-screen payment-screen--pin" data-payment-screen="pin" hidden>
+              <div class="payment-screen-heading">
+                <span>02 // VERIFY PURCHASE DATA</span>
+                <h3>ENTER AUTHORIZATION PIN</h3>
+                <p>Revisa los datos de la operación e introduce un código de cuatro cifras.</p>
+              </div>
+
+              <div class="payment-pin-layout">
+                <div class="payment-data-panel">
+                  <div class="payment-card-mini">
+                    <img src="assets/currency-card.png" alt="">
+                  </div>
+                  <dl>
+                    <div><dt>TOKEN ID</dt><dd>72-0586</dd></div>
+                    <div><dt>HOLDER</dt><dd>TRANSIT CREW</dd></div>
+                    <div><dt>EXPIRY</dt><dd>09/29</dd></div>
+                    <div><dt>CONCEPT</dt><dd>EMBARKATION ACCESS</dd></div>
+                    <div class="payment-total"><dt>TOTAL</dt><dd id="paymentTotal">35.50 CR</dd></div>
+                  </dl>
+                </div>
+
+                <div class="payment-keypad-panel">
+                  <span class="payment-keypad-label">SECURE PIN // 4 DIGITS</span>
+                  <div class="payment-pin-dots" id="paymentPinDots" aria-label="PIN vacío">
+                    <i></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="payment-keypad" aria-label="Teclado numérico">
+                    <button type="button" data-payment-key="1">1<small>QZ</small></button>
+                    <button type="button" data-payment-key="2">2<small>ABC</small></button>
+                    <button type="button" data-payment-key="3">3<small>DEF</small></button>
+                    <button type="button" data-payment-key="4">4<small>GHI</small></button>
+                    <button type="button" data-payment-key="5">5<small>JKL</small></button>
+                    <button type="button" data-payment-key="6">6<small>MNO</small></button>
+                    <button type="button" data-payment-key="7">7<small>PRS</small></button>
+                    <button type="button" data-payment-key="8">8<small>TUV</small></button>
+                    <button type="button" data-payment-key="9">9<small>WXY</small></button>
+                    <button class="payment-keypad-command" type="button" data-payment-key="clear">CLR</button>
+                    <button type="button" data-payment-key="0">0<small>SYS</small></button>
+                    <button class="payment-keypad-command" type="button" data-payment-key="backspace" aria-label="Borrar última cifra">⌫</button>
+                  </div>
+                  <button class="payment-primary payment-pin-confirm" id="paymentPinConfirm" type="button" disabled>
+                    VALIDATE DATA <span>→</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section class="payment-screen payment-screen--fingerprint" data-payment-screen="fingerprint" hidden>
+              <div class="payment-screen-heading">
+                <span>03 // BIOMETRIC AUTHORIZATION</span>
+                <h3>CONFIRM YOUR IDENTITY</h3>
+                <p>Coloca el dedo sobre el lector para completar la compra.</p>
+              </div>
+
+              <button class="payment-fingerprint" id="paymentFingerprint" type="button" aria-label="Escanear huella dactilar">
+                <span class="payment-fingerprint-grid" aria-hidden="true"></span>
+                <svg viewBox="0 0 160 200" aria-hidden="true">
+                  <path d="M80 18c-39 0-66 28-66 68"/>
+                  <path d="M80 35c-31 0-50 22-50 53 0 43-8 67-17 85"/>
+                  <path d="M80 52c-21 0-34 15-34 37 0 48-10 73-23 92"/>
+                  <path d="M80 70c-11 0-18 8-18 21 0 48-8 73-22 94"/>
+                  <path d="M80 18c39 0 66 28 66 68 0 43 5 72 15 92"/>
+                  <path d="M80 35c31 0 50 22 50 53 0 47 7 73 18 94"/>
+                  <path d="M80 52c21 0 34 15 34 37 0 50 8 75 20 96"/>
+                  <path d="M80 70c11 0 18 8 18 21 0 49 8 74 20 94"/>
+                  <path d="M80 91c0 48-7 73-20 95"/>
+                  <path d="M80 114c1 31-3 52-10 70"/>
+                </svg>
+                <span class="payment-fingerprint-copy">
+                  <strong id="paymentFingerprintStatus">TOUCH TO SCAN</strong>
+                  <small>BIOMETRIC SENSOR // READY</small>
+                </span>
+              </button>
+
+              <div class="payment-biometric-data" aria-hidden="true">
+                <span>ENCRYPTION<b>QUANTUM-256</b></span>
+                <span>IDENTITY<b>LOCAL USER</b></span>
+                <span>MATCH RATE<b id="paymentMatchRate">00.00%</b></span>
+              </div>
+            </section>
+
+            <section class="payment-screen payment-screen--success" data-payment-screen="success" hidden>
+              <div class="payment-success-mark" aria-hidden="true"><span></span></div>
+              <span class="payment-success-kicker">TRANSACTION AUTHORIZED</span>
+              <h3>PURCHASE COMPLETE</h3>
+              <p>El acceso de embarque ha sido cargado en tu Currency Card.</p>
+              <dl class="payment-receipt">
+                <div><dt>TRANSACTION</dt><dd id="paymentTransaction">EZ-000000</dd></div>
+                <div><dt>AMOUNT</dt><dd id="paymentReceiptTotal">35.50 CR</dd></div>
+                <div><dt>STATUS</dt><dd>APPROVED</dd></div>
+              </dl>
+              <div class="payment-auto-close"><i></i><span>RETURNING TO TERMINAL</span></div>
+            </section>
+          </div>
         </section>
 
         <section

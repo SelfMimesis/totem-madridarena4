@@ -21,12 +21,30 @@
   const notificationTitle = document.querySelector("#notificationTitle");
   const notificationMessage = document.querySelector("#notificationMessage");
   const notificationCode = document.querySelector("#notificationCode");
-  const mapMarker = document.querySelector("#mapMarker");
-  const mapMarkerLabel = document.querySelector("#mapMarkerLabel");
-  const mapRoute = document.querySelector("#mapRoute");
   const fullscreenHotspot = document.querySelector("#fullscreenHotspot");
   const toast = document.querySelector("#toast");
   const toastText = document.querySelector("#toastText");
+  const paymentFlow = document.querySelector("#paymentFlow");
+  const paymentClose = document.querySelector("#paymentClose");
+  const paymentScreens = [...document.querySelectorAll("[data-payment-screen]")];
+  const paymentSteps = [...document.querySelectorAll("[data-payment-step]")];
+  const paymentCards = [...document.querySelectorAll("[data-payment-card]")];
+  const paymentDots = [...document.querySelectorAll(".payment-carousel-dots i")];
+  const paymentPrev = document.querySelector("#paymentPrev");
+  const paymentNext = document.querySelector("#paymentNext");
+  const paymentCardConfirm = document.querySelector("#paymentCardConfirm");
+  const paymentPlanName = document.querySelector("#paymentPlanName");
+  const paymentPlanCredit = document.querySelector("#paymentPlanCredit");
+  const paymentTotal = document.querySelector("#paymentTotal");
+  const paymentKeyButtons = [...document.querySelectorAll("[data-payment-key]")];
+  const paymentPinDots = [...document.querySelectorAll("#paymentPinDots i")];
+  const paymentPinDisplay = document.querySelector("#paymentPinDots");
+  const paymentPinConfirm = document.querySelector("#paymentPinConfirm");
+  const paymentFingerprint = document.querySelector("#paymentFingerprint");
+  const paymentFingerprintStatus = document.querySelector("#paymentFingerprintStatus");
+  const paymentMatchRate = document.querySelector("#paymentMatchRate");
+  const paymentTransaction = document.querySelector("#paymentTransaction");
+  const paymentReceiptTotal = document.querySelector("#paymentReceiptTotal");
 
   let activeNode = 0;
   let draggingSlider = false;
@@ -36,8 +54,14 @@
   let lastFocusedElement = null;
   let notificationTimer = 0;
   let artReactionTimer = 0;
-  let markerTimers = [];
-  let markerPosition = { x: 50, y: 55 };
+  let activePaymentCard = 0;
+  let paymentScreenName = "cards";
+  let paymentPin = "";
+  let paymentCloseTimer = 0;
+  let fingerprintTimer = 0;
+  let fingerprintCompleteTimer = 0;
+  let fingerprintInterval = 0;
+  let lastPaymentFocusedElement = null;
   const lastButtonAnimation = new WeakMap();
 
   const actionNotifications = {
@@ -51,26 +75,13 @@
     TRANSROLL: ["TRANSIT // ROLL", "TRANSROLL READY", "Matriz de embarque preparada."],
   };
 
-  const markerPositions = {
-    SYSTEM: { x: 50, y: 13 },
-    VECTOR: { x: 76, y: 21 },
-    ZENITH: { x: 64, y: 33 },
-    JUNCTION: { x: 79, y: 48 },
-    RELAY: { x: 59, y: 61 },
-    LIFELINE: { x: 73, y: 79 },
-    ARCHIVE: { x: 31, y: 79 },
-    TRANSROLL: { x: 49, y: 88 },
-    "NODO 01": { x: 24, y: 18 },
-    "NODO 02": { x: 39, y: 25 },
-    "NODO 03": { x: 58, y: 19 },
-    "NODO 04": { x: 73, y: 31 },
-    "NODO 05": { x: 63, y: 44 },
-    "NODO 06": { x: 43, y: 39 },
-    "NODO 07": { x: 27, y: 53 },
-    "NODO 08": { x: 46, y: 64 },
-    "NODO 09": { x: 69, y: 69 },
-    "NODO 10": { x: 52, y: 84 },
-  };
+  const paymentPlans = [
+    { name: "CURRENCY // SILVER", credit: "35.50", total: "35.50 CR" },
+    { name: "CURRENCY // VIOLET", credit: "72.04", total: "72.04 CR" },
+    { name: "CURRENCY // DEEP BLUE", credit: "108.60", total: "108.60 CR" },
+  ];
+
+  const paymentScreenOrder = ["cards", "pin", "fingerprint", "success"];
 
   function fitStage() {
     const scale = Math.min(window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
@@ -100,57 +111,6 @@
 
   function getControlName(button) {
     return button.dataset.action || button.dataset.utility || button.dataset.label || "SYSTEM";
-  }
-
-  function drawMapRoute(from, to) {
-    const deltaX = ((to.x - from.x) / 100) * notificationZone.clientWidth;
-    const deltaY = ((to.y - from.y) / 100) * notificationZone.clientHeight;
-    const distance = Math.hypot(deltaX, deltaY);
-    const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-
-    mapRoute.style.left = `${from.x}%`;
-    mapRoute.style.top = `${from.y}%`;
-    mapRoute.style.width = `${distance}px`;
-    mapRoute.style.transform = `rotate(${angle}deg)`;
-    mapRoute.classList.remove("is-drawing");
-    void mapRoute.offsetWidth;
-    mapRoute.classList.add("is-drawing");
-  }
-
-  function moveMapMarker(button) {
-    const controlName = getControlName(button);
-    const target = markerPositions[controlName] || markerPositions.SYSTEM;
-    const direction = target.x >= markerPosition.x ? 1 : -1;
-    const midpoint = {
-      x: Math.max(8, Math.min(92, (markerPosition.x + target.x) / 2 + direction * 4)),
-      y: Math.max(8, Math.min(92, (markerPosition.y + target.y) / 2 - 6)),
-    };
-
-    markerTimers.forEach((timer) => window.clearTimeout(timer));
-    markerTimers = [];
-    drawMapRoute(markerPosition, target);
-    mapMarkerLabel.textContent = controlName.replace("NODO ", "N-");
-    mapMarker.classList.remove("is-arriving");
-    mapMarker.classList.add("is-moving");
-
-    requestAnimationFrame(() => {
-      mapMarker.style.left = `${midpoint.x}%`;
-      mapMarker.style.top = `${midpoint.y}%`;
-    });
-
-    markerTimers.push(
-      window.setTimeout(() => {
-        mapMarker.style.left = `${target.x}%`;
-        mapMarker.style.top = `${target.y}%`;
-      }, 530),
-      window.setTimeout(() => {
-        mapMarker.classList.remove("is-moving");
-        mapMarker.classList.add("is-arriving");
-      }, 1080),
-      window.setTimeout(() => mapMarker.classList.remove("is-arriving"), 1880),
-    );
-
-    markerPosition = target;
   }
 
   function showControlNotification(button) {
@@ -222,7 +182,6 @@
     void button.offsetWidth;
     button.classList.add("is-pressed");
     emitButtonFx(button);
-    moveMapMarker(button);
     showControlNotification(button);
     window.clearTimeout(artReactionTimer);
     svgButtonsArt.classList.remove("is-reacting");
@@ -322,7 +281,7 @@
   }
 
   function openSignalModal() {
-    if (signalModal.classList.contains("is-open")) return;
+    if (signalModal.classList.contains("is-open") || paymentFlow.classList.contains("is-open")) return;
     hideControlNotification();
     lastFocusedElement = document.activeElement;
     terminal.classList.add("is-obscured");
@@ -339,11 +298,189 @@
     signalModal.classList.remove("is-open");
     signalModal.setAttribute("aria-hidden", "true");
     signalModal.inert = true;
-    terminal.classList.remove("is-obscured");
+    if (!paymentFlow.classList.contains("is-open")) {
+      terminal.classList.remove("is-obscured");
+    }
     if (lastFocusedElement instanceof HTMLElement) {
       lastFocusedElement.focus({ preventScroll: true });
     }
     pulseHaptic(14);
+  }
+
+  function clearFingerprintTimers() {
+    window.clearTimeout(fingerprintTimer);
+    window.clearTimeout(fingerprintCompleteTimer);
+    window.clearInterval(fingerprintInterval);
+    fingerprintTimer = 0;
+    fingerprintCompleteTimer = 0;
+    fingerprintInterval = 0;
+  }
+
+  function updatePaymentCard(index, haptic = true) {
+    const cardCount = paymentCards.length;
+    activePaymentCard = (index + cardCount) % cardCount;
+
+    paymentCards.forEach((card, cardIndex) => {
+      const offset = (cardIndex - activePaymentCard + cardCount) % cardCount;
+      card.classList.toggle("is-active", offset === 0);
+      card.classList.toggle("is-next", offset === 1);
+      card.classList.toggle("is-prev", offset === cardCount - 1);
+      card.setAttribute("aria-pressed", String(offset === 0));
+      card.querySelector("img").alt = offset === 0 ? `Currency Card ${paymentPlans[cardIndex].name}` : "";
+    });
+
+    paymentDots.forEach((dot, dotIndex) => {
+      dot.classList.toggle("is-active", dotIndex === activePaymentCard);
+    });
+
+    const plan = paymentPlans[activePaymentCard];
+    paymentPlanName.textContent = plan.name;
+    paymentPlanCredit.textContent = plan.credit;
+    paymentTotal.textContent = plan.total;
+    paymentReceiptTotal.textContent = plan.total;
+
+    if (haptic) pulseHaptic(8);
+  }
+
+  function updatePaymentPin() {
+    paymentPinDots.forEach((dot, index) => {
+      dot.classList.toggle("is-filled", index < paymentPin.length);
+    });
+    paymentPinDisplay.setAttribute(
+      "aria-label",
+      paymentPin.length ? `PIN con ${paymentPin.length} de 4 cifras` : "PIN vacío",
+    );
+    paymentPinConfirm.disabled = paymentPin.length !== 4;
+  }
+
+  function focusPaymentScreen(screenName) {
+    const focusTargets = {
+      cards: paymentCardConfirm,
+      pin: paymentKeyButtons[0],
+      fingerprint: paymentFingerprint,
+      success: paymentClose,
+    };
+    requestAnimationFrame(() => focusTargets[screenName]?.focus({ preventScroll: true }));
+  }
+
+  function showPaymentScreen(screenName, focus = true) {
+    const activeIndex = paymentScreenOrder.indexOf(screenName);
+    paymentScreenName = screenName;
+
+    paymentScreens.forEach((screen) => {
+      const isActive = screen.dataset.paymentScreen === screenName;
+      screen.hidden = !isActive;
+      screen.classList.toggle("is-active", isActive);
+    });
+
+    paymentSteps.forEach((step) => {
+      const stepIndex = paymentScreenOrder.indexOf(step.dataset.paymentStep);
+      step.classList.toggle("is-active", stepIndex === activeIndex);
+      step.classList.toggle("is-complete", stepIndex < activeIndex);
+    });
+
+    if (focus) focusPaymentScreen(screenName);
+  }
+
+  function resetPaymentFlow() {
+    window.clearTimeout(paymentCloseTimer);
+    clearFingerprintTimers();
+    paymentPin = "";
+    paymentFingerprint.disabled = false;
+    paymentFingerprint.classList.remove("is-scanning", "is-verified");
+    paymentFingerprintStatus.textContent = "TOUCH TO SCAN";
+    paymentMatchRate.textContent = "00.00%";
+    updatePaymentPin();
+    updatePaymentCard(0, false);
+    showPaymentScreen("cards", false);
+  }
+
+  function openPaymentFlow(trigger) {
+    if (paymentFlow.classList.contains("is-open")) return;
+    hideControlNotification();
+    window.clearTimeout(toastTimer);
+    toast.classList.remove("is-visible");
+    lastPaymentFocusedElement = trigger || document.activeElement;
+    resetPaymentFlow();
+    terminal.classList.add("is-obscured");
+    paymentFlow.classList.add("is-open");
+    paymentFlow.setAttribute("aria-hidden", "false");
+    paymentFlow.inert = false;
+    focusPaymentScreen("cards");
+    pulseHaptic([15, 30, 15]);
+  }
+
+  function closePaymentFlow() {
+    if (!paymentFlow.classList.contains("is-open")) return;
+    window.clearTimeout(paymentCloseTimer);
+    clearFingerprintTimers();
+    paymentFlow.classList.remove("is-open");
+    paymentFlow.setAttribute("aria-hidden", "true");
+    paymentFlow.inert = true;
+    terminal.classList.remove("is-obscured");
+    utilityButtons.forEach((item) => item.classList.remove("is-active"));
+    if (lastPaymentFocusedElement instanceof HTMLElement) {
+      lastPaymentFocusedElement.focus({ preventScroll: true });
+    }
+    pulseHaptic(12);
+  }
+
+  function handlePaymentKey(key, button) {
+    if (paymentScreenName !== "pin") return;
+
+    if (/^\d$/.test(key) && paymentPin.length < 4) {
+      paymentPin += key;
+    } else if (key === "backspace") {
+      paymentPin = paymentPin.slice(0, -1);
+    } else if (key === "clear") {
+      paymentPin = "";
+    } else {
+      return;
+    }
+
+    if (button) {
+      button.classList.add("is-pressed");
+      window.setTimeout(() => button.classList.remove("is-pressed"), 180);
+    }
+    updatePaymentPin();
+    pulseHaptic(paymentPin.length === 4 ? [9, 18, 9] : 7);
+  }
+
+  function completePayment() {
+    const sequence = String(Date.now()).slice(-6);
+    paymentTransaction.textContent = `EZ-${sequence}`;
+    paymentReceiptTotal.textContent = paymentPlans[activePaymentCard].total;
+    showPaymentScreen("success");
+    pulseHaptic([18, 35, 18, 35, 32]);
+    paymentCloseTimer = window.setTimeout(closePaymentFlow, 2800);
+  }
+
+  function scanPaymentFingerprint() {
+    if (paymentScreenName !== "fingerprint" || paymentFingerprint.classList.contains("is-scanning")) return;
+
+    clearFingerprintTimers();
+    paymentFingerprint.disabled = true;
+    paymentFingerprint.classList.remove("is-verified");
+    paymentFingerprint.classList.add("is-scanning");
+    paymentFingerprintStatus.textContent = "SCANNING BIOMETRICS";
+    paymentMatchRate.textContent = "08.40%";
+    let matchRate = 8.4;
+
+    fingerprintInterval = window.setInterval(() => {
+      matchRate = Math.min(97.6, matchRate + 5.6);
+      paymentMatchRate.textContent = `${matchRate.toFixed(2)}%`;
+    }, 90);
+
+    fingerprintTimer = window.setTimeout(() => {
+      window.clearInterval(fingerprintInterval);
+      fingerprintInterval = 0;
+      paymentFingerprint.classList.remove("is-scanning");
+      paymentFingerprint.classList.add("is-verified");
+      paymentFingerprintStatus.textContent = "IDENTITY VERIFIED";
+      paymentMatchRate.textContent = "99.98%";
+      pulseHaptic([14, 24, 28]);
+      fingerprintCompleteTimer = window.setTimeout(completePayment, 650);
+    }, 1600);
   }
 
   function selectAction(button) {
@@ -358,12 +495,10 @@
   }
 
   function activateUtility(button) {
-    const wasActive = button.classList.contains("is-active");
     utilityButtons.forEach((item) => item.classList.remove("is-active"));
-    button.classList.toggle("is-active", !wasActive);
+    button.classList.add("is-active");
     animateSvgButton(button);
-    pulseHaptic(10);
-    showToast(`${button.dataset.utility} // ${wasActive ? "STANDBY" : "ENGAGED"}`);
+    openPaymentFlow(button);
   }
 
   function activateIndicator() {
@@ -444,9 +579,27 @@
   }
 
   function trapModalFocus(event) {
-    if (event.key !== "Tab" || !signalModal.classList.contains("is-open")) return;
-    event.preventDefault();
-    modalClose.focus({ preventScroll: true });
+    if (event.key !== "Tab") return;
+    const activeDialog = paymentFlow.classList.contains("is-open")
+      ? paymentFlow
+      : signalModal.classList.contains("is-open")
+        ? signalModal
+        : null;
+    if (!activeDialog) return;
+
+    const focusableElements = [...activeDialog.querySelectorAll("button:not(:disabled), [href], [tabindex]:not([tabindex='-1'])")]
+      .filter((element) => element instanceof HTMLElement && element.offsetParent !== null);
+    if (!focusableElements.length) return;
+
+    const first = focusableElements[0];
+    const last = focusableElements.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
   }
 
   sliderNodes.forEach((node, index) => {
@@ -485,6 +638,29 @@
     });
   });
 
+  paymentCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      updatePaymentCard(Number(card.dataset.paymentCard));
+    });
+  });
+
+  paymentPrev.addEventListener("click", () => updatePaymentCard(activePaymentCard - 1));
+  paymentNext.addEventListener("click", () => updatePaymentCard(activePaymentCard + 1));
+  paymentCardConfirm.addEventListener("click", () => {
+    showPaymentScreen("pin");
+    pulseHaptic(10);
+  });
+  paymentKeyButtons.forEach((button) => {
+    button.addEventListener("click", () => handlePaymentKey(button.dataset.paymentKey, button));
+  });
+  paymentPinConfirm.addEventListener("click", () => {
+    if (paymentPin.length !== 4) return;
+    showPaymentScreen("fingerprint");
+    pulseHaptic([10, 20, 10]);
+  });
+  paymentFingerprint.addEventListener("click", scanPaymentFingerprint);
+  paymentClose.addEventListener("click", closePaymentFlow);
+
   indicatorButton.addEventListener("click", (event) => {
     event.stopPropagation();
     activateIndicator();
@@ -508,9 +684,40 @@
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      closeSignalModal();
+      if (paymentFlow.classList.contains("is-open")) {
+        closePaymentFlow();
+      } else {
+        closeSignalModal();
+      }
     }
-    if (event.key.toLowerCase() === "f" && !signalModal.classList.contains("is-open")) {
+
+    if (paymentFlow.classList.contains("is-open")) {
+      if (paymentScreenName === "cards" && event.key === "ArrowLeft") {
+        event.preventDefault();
+        updatePaymentCard(activePaymentCard - 1);
+      } else if (paymentScreenName === "cards" && event.key === "ArrowRight") {
+        event.preventDefault();
+        updatePaymentCard(activePaymentCard + 1);
+      } else if (paymentScreenName === "pin" && /^\d$/.test(event.key)) {
+        event.preventDefault();
+        handlePaymentKey(event.key);
+      } else if (paymentScreenName === "pin" && event.key === "Backspace") {
+        event.preventDefault();
+        handlePaymentKey("backspace");
+      } else if (paymentScreenName === "pin" && event.key === "Delete") {
+        event.preventDefault();
+        handlePaymentKey("clear");
+      } else if (paymentScreenName === "pin" && event.key === "Enter" && paymentPin.length === 4) {
+        event.preventDefault();
+        showPaymentScreen("fingerprint");
+      }
+    }
+
+    if (
+      event.key.toLowerCase() === "f" &&
+      !signalModal.classList.contains("is-open") &&
+      !paymentFlow.classList.contains("is-open")
+    ) {
       if (fullscreenElement()) {
         exitFullscreen();
       } else {
