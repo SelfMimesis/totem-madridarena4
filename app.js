@@ -49,6 +49,11 @@
   const planetaryClock = document.querySelector("#planetaryClock");
   const planetaryClockClose = document.querySelector("#planetaryClockClose");
   const planetClockCards = [...document.querySelectorAll("[data-planet-clock]")];
+  const arrivalsBoard = document.querySelector("#arrivalsBoard");
+  const arrivalsClose = document.querySelector("#arrivalsClose");
+  const arrivalsList = document.querySelector("#arrivalsList");
+  const arrivalsSector = document.querySelector("#arrivalsSector");
+  const arrivalsFeedCode = document.querySelector("#arrivalsFeedCode");
 
   let activeNode = 0;
   let draggingSlider = false;
@@ -71,6 +76,10 @@
   let suppressPaymentCardClick = false;
   let planetaryClockTimer = 0;
   let lastClockFocusedElement = null;
+  let arrivalsRefreshTimer = 0;
+  let arrivalsCycle = 0;
+  let activeArrivalsAction = "VECTOR";
+  let lastArrivalsFocusedElement = null;
   const lastButtonAnimation = new WeakMap();
 
   const actionNotifications = {
@@ -98,6 +107,36 @@
     rim: { rate: 0.67, seed: 23 * 60 * 60 * 1000 + 58 * 60 * 1000 + 19 * 1000 },
   };
   const planetaryEpoch = Date.UTC(2026, 0, 1);
+  const arrivalsProfiles = {
+    VECTOR: { label: "VECTOR // 01", feed: "43-A // ONLINE", rowOffset: 0, minuteOffset: 0 },
+    ZENITH: { label: "ZENITH // 07", feed: "77-Z // ONLINE", rowOffset: 2, minuteOffset: 12 },
+    JUNCTION: { label: "JUNCTION // 12", feed: "12-J // ONLINE", rowOffset: 4, minuteOffset: 24 },
+    RELAY: { label: "RELAY // 04", feed: "04-R // ONLINE", rowOffset: 6, minuteOffset: 36 },
+    LIFELINE: { label: "LIFELINE // 09", feed: "09-L // ONLINE", rowOffset: 8, minuteOffset: 48 },
+  };
+  const arrivalRows = [
+    { time: "06:30", origin: "GANAKA PIT", flight: "EZ-2290", gate: "A3", status: "LANDED" },
+    { time: "06:45", origin: "PORTFREE", flight: "PF-4432", gate: "B7", status: "ON TIME" },
+    { time: "07:05", origin: "RAVYHYRAL", flight: "RV-3022", gate: "C2", status: "APPROACH" },
+    { time: "07:20", origin: "NEW RIM", flight: "RM-1799", gate: "A8", status: "DOCKING" },
+    { time: "07:35", origin: "CINDER VEIL", flight: "CV-8831", gate: "D4", status: "ON TIME" },
+    { time: "08:00", origin: "IO ARCADIA", flight: "IA-6207", gate: "E1", status: "DELAYED" },
+    { time: "08:25", origin: "ORISON", flight: "OR-4232", gate: "C6", status: "ON TIME" },
+    { time: "08:50", origin: "KEPLER NINE", flight: "KN-0918", gate: "B3", status: "APPROACH" },
+    { time: "09:15", origin: "AURORA GATE", flight: "AG-7210", gate: "D1", status: "DOCKING" },
+  ];
+  const arrivalNameSets = [
+    ["GANAKA PIT", "PORTFREE", "RAVYHYRAL", "NEW RIM", "CINDER VEIL", "IO ARCADIA", "ORISON", "KEPLER NINE", "AURORA GATE"],
+    ["MIRROR FALL", "TALOS PRIME", "KHEPRI NINE", "OPAL REACH", "VANTA RING", "NEXUS DAWN", "HELIX POINT", "SATURN VALE", "POLARIS BAY"],
+    ["EDEN ARC", "NOVA MERID", "CERES GATE", "VEGA TERMIN", "LUMEN DEEP", "ATLAS VOID", "SABLE MOON", "ECHO STATION", "TITAN QUAY"],
+  ];
+  const arrivalFieldLengths = {
+    time: 5,
+    origin: 11,
+    flight: 7,
+    gate: 3,
+    status: 8,
+  };
 
   function fitStage() {
     const scale = Math.min(window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
@@ -315,7 +354,8 @@
     if (
       signalModal.classList.contains("is-open") ||
       paymentFlow.classList.contains("is-open") ||
-      planetaryClock.classList.contains("is-open")
+      planetaryClock.classList.contains("is-open") ||
+      arrivalsBoard.classList.contains("is-open")
     ) return;
     hideControlNotification();
     lastFocusedElement = document.activeElement;
@@ -340,6 +380,135 @@
       lastFocusedElement.focus({ preventScroll: true });
     }
     pulseHaptic(14);
+  }
+
+  function offsetArrivalTime(value, offsetMinutes) {
+    const [hours, minutes] = value.split(":").map(Number);
+    const totalMinutes = (hours * 60 + minutes + offsetMinutes + 24 * 60) % (24 * 60);
+    return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
+  }
+
+  function createFlightCode(origin, rowIndex) {
+    const words = origin.split(/\s+/);
+    const prefix = words.length > 1
+      ? `${words[0][0]}${words[1][0]}`
+      : words[0].slice(0, 2);
+    const nameSeed = [...origin].reduce((total, character) => total + character.charCodeAt(0), 0);
+    const number = 1000 + ((nameSeed * 17 + rowIndex * 271 + arrivalsCycle * 613) % 9000);
+    return `${prefix}-${number}`.toUpperCase();
+  }
+
+  function createArrivalField(name, value, rowIndex, fieldIndex) {
+    const length = arrivalFieldLengths[name];
+    const normalizedValue = value.toUpperCase().padEnd(length, " ").slice(0, length);
+    const field = document.createElement("span");
+
+    field.className = `arrival-field arrival-field--${name}`;
+    field.setAttribute("role", "cell");
+    field.setAttribute("aria-label", value);
+    field.style.setProperty("--field-length", length);
+
+    [...normalizedValue].forEach((character, characterIndex) => {
+      const cell = document.createElement("span");
+      const glyph = document.createElement("span");
+      const delay = 260 + rowIndex * 54 + fieldIndex * 38 + characterIndex * 12;
+
+      cell.className = "arrival-char";
+      cell.setAttribute("aria-hidden", "true");
+      cell.style.setProperty("--char-delay", `${delay}ms`);
+      glyph.textContent = character === " " ? "\u00a0" : character;
+      cell.append(glyph);
+      field.append(cell);
+    });
+
+    return field;
+  }
+
+  function renderArrivals() {
+    const profile = arrivalsProfiles[activeArrivalsAction] || arrivalsProfiles.VECTOR;
+    const nameSet = arrivalNameSets[arrivalsCycle % arrivalNameSets.length];
+    const statusIndex = arrivalsCycle ? arrivalsCycle % arrivalRows.length : -1;
+    const fragment = document.createDocumentFragment();
+
+    arrivalsSector.textContent = profile.label;
+    arrivalsFeedCode.textContent = profile.feed;
+
+    for (let rowIndex = 0; rowIndex < arrivalRows.length; rowIndex += 1) {
+      const sourceIndex = (rowIndex + profile.rowOffset + arrivalsCycle) % arrivalRows.length;
+      const source = arrivalRows[sourceIndex];
+      const origin = nameSet[(rowIndex + profile.rowOffset) % nameSet.length];
+      const status = rowIndex === statusIndex
+        ? (source.status === "LANDED" ? "ON TIME" : "DOCKING")
+        : source.status;
+      const data = {
+        time: offsetArrivalTime(arrivalRows[rowIndex].time, profile.minuteOffset + arrivalsCycle),
+        origin,
+        flight: createFlightCode(origin, rowIndex),
+        gate: source.gate,
+        status,
+      };
+      const row = document.createElement("article");
+
+      row.className = "arrival-row";
+      row.setAttribute("role", "row");
+      row.setAttribute("data-status", data.status);
+      row.setAttribute(
+        "aria-label",
+        `${data.time}, ${data.origin}, vuelo ${data.flight}, puerta ${data.gate}, ${data.status}`,
+      );
+      row.style.setProperty("--row-index", rowIndex);
+
+      Object.entries(data).forEach(([name, value], fieldIndex) => {
+        row.append(createArrivalField(name, value, rowIndex, fieldIndex));
+      });
+      fragment.append(row);
+    }
+
+    arrivalsList.replaceChildren(fragment);
+  }
+
+  function openArrivalsBoard(trigger) {
+    if (
+      arrivalsBoard.classList.contains("is-open") ||
+      signalModal.classList.contains("is-open") ||
+      paymentFlow.classList.contains("is-open") ||
+      planetaryClock.classList.contains("is-open")
+    ) return;
+
+    hideControlNotification();
+    window.clearTimeout(toastTimer);
+    toast.classList.remove("is-visible");
+    lastArrivalsFocusedElement = trigger || document.activeElement;
+    activeArrivalsAction = trigger?.dataset.action || "VECTOR";
+    arrivalsCycle = 0;
+    renderArrivals();
+    window.clearInterval(arrivalsRefreshTimer);
+    arrivalsRefreshTimer = window.setInterval(() => {
+      arrivalsCycle += 1;
+      renderArrivals();
+      pulseHaptic(5);
+    }, 5200);
+    terminal.classList.add("is-obscured", "is-arrivals-open");
+    arrivalsBoard.classList.add("is-open");
+    arrivalsBoard.setAttribute("aria-hidden", "false");
+    arrivalsBoard.inert = false;
+    arrivalsClose.focus({ preventScroll: true });
+    pulseHaptic([14, 24, 14]);
+    showToast(`ARRIVALS // ${activeArrivalsAction}`);
+  }
+
+  function closeArrivalsBoard() {
+    if (!arrivalsBoard.classList.contains("is-open")) return;
+    window.clearInterval(arrivalsRefreshTimer);
+    arrivalsRefreshTimer = 0;
+    arrivalsBoard.classList.remove("is-open");
+    arrivalsBoard.setAttribute("aria-hidden", "true");
+    arrivalsBoard.inert = true;
+    terminal.classList.remove("is-obscured", "is-arrivals-open");
+    if (lastArrivalsFocusedElement instanceof HTMLElement) {
+      lastArrivalsFocusedElement.focus({ preventScroll: true });
+    }
+    pulseHaptic(12);
   }
 
   function formatPlanetaryTime(milliseconds) {
@@ -370,7 +539,8 @@
     if (
       planetaryClock.classList.contains("is-open") ||
       paymentFlow.classList.contains("is-open") ||
-      signalModal.classList.contains("is-open")
+      signalModal.classList.contains("is-open") ||
+      arrivalsBoard.classList.contains("is-open")
     ) return;
     hideControlNotification();
     lastClockFocusedElement = trigger || document.activeElement;
@@ -649,7 +819,11 @@
   }
 
   function openPaymentFlow(trigger) {
-    if (paymentFlow.classList.contains("is-open") || planetaryClock.classList.contains("is-open")) return;
+    if (
+      paymentFlow.classList.contains("is-open") ||
+      planetaryClock.classList.contains("is-open") ||
+      arrivalsBoard.classList.contains("is-open")
+    ) return;
     hideControlNotification();
     window.clearTimeout(toastTimer);
     toast.classList.remove("is-visible");
@@ -744,7 +918,7 @@
     });
     animateSvgButton(button);
     pulseHaptic(11);
-    showToast(`${button.dataset.action} // ACTIVE`);
+    openArrivalsBoard(button);
   }
 
   function activateUtility(button) {
@@ -833,13 +1007,15 @@
 
   function trapModalFocus(event) {
     if (event.key !== "Tab") return;
-    const activeDialog = planetaryClock.classList.contains("is-open")
-      ? planetaryClock
-      : paymentFlow.classList.contains("is-open")
-        ? paymentFlow
-        : signalModal.classList.contains("is-open")
-          ? signalModal
-          : null;
+    const activeDialog = arrivalsBoard.classList.contains("is-open")
+      ? arrivalsBoard
+      : planetaryClock.classList.contains("is-open")
+        ? planetaryClock
+        : paymentFlow.classList.contains("is-open")
+          ? paymentFlow
+          : signalModal.classList.contains("is-open")
+            ? signalModal
+            : null;
     if (!activeDialog) return;
 
     const focusableElements = [...activeDialog.querySelectorAll("button:not(:disabled), [href], [tabindex]:not([tabindex='-1'])")]
@@ -923,6 +1099,7 @@
   });
   paymentFingerprint.addEventListener("click", scanPaymentFingerprint);
   paymentClose.addEventListener("click", closePaymentFlow);
+  arrivalsClose.addEventListener("click", closeArrivalsBoard);
 
   indicatorButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -950,7 +1127,9 @@
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      if (planetaryClock.classList.contains("is-open")) {
+      if (arrivalsBoard.classList.contains("is-open")) {
+        closeArrivalsBoard();
+      } else if (planetaryClock.classList.contains("is-open")) {
         closePlanetaryClock();
       } else if (paymentFlow.classList.contains("is-open")) {
         closePaymentFlow();
@@ -1000,7 +1179,8 @@
       event.key.toLowerCase() === "f" &&
       !signalModal.classList.contains("is-open") &&
       !paymentFlow.classList.contains("is-open") &&
-      !planetaryClock.classList.contains("is-open")
+      !planetaryClock.classList.contains("is-open") &&
+      !arrivalsBoard.classList.contains("is-open")
     ) {
       if (fullscreenElement()) {
         exitFullscreen();

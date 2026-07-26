@@ -9,6 +9,8 @@ Interfaz táctil 4K vertical (2160 × 3840) construida con HTML, CSS y JavaScrip
 - Desplazar el selector izquierdo hacia abajo abre el reloj orbital de Ganaka pit,
   Portfreecommerce, ravyhyral y rim; desplazar hacia arriba lo cierra.
 - Los controles derechos responden al toque.
+- Cada control derecho abre un tablón animado de llegadas interplanetarias inspirado
+  en el panel split-flap de referencia e integrado con el logotipo Transroll.
 - Los dos controles inferiores abren un pago guiado con carrusel de tarjetas, PIN y huella.
 - El pago confirma la compra y vuelve automáticamente al terminal.
 - Un toque en la esquina inferior derecha entra en pantalla completa.
@@ -25,3 +27,9 @@ npx serve .
 
 La composición tiene un lienzo interno fijo de 2160 × 3840 y se escala automáticamente
 para previsualizarla en pantallas de cualquier tamaño.
+
+## Publicación
+
+La versión pública se sirve con GitHub Pages:
+
+https://selfmimesis.github.io/totem-madridarena4/

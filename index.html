@@ -103,11 +103,11 @@
           </nav>
 
           <nav class="svg-right-deck" aria-label="Acciones de navegación">
-            <button class="svg-hotspot svg-hotspot--right svg-right--01 is-active" type="button" data-action="VECTOR" aria-label="Vector" aria-pressed="true"></button>
-            <button class="svg-hotspot svg-hotspot--right svg-right--02" type="button" data-action="ZENITH" aria-label="Zenith" aria-pressed="false"></button>
-            <button class="svg-hotspot svg-hotspot--right svg-right--03" type="button" data-action="JUNCTION" aria-label="Junction" aria-pressed="false"></button>
-            <button class="svg-hotspot svg-hotspot--right svg-right--04" type="button" data-action="RELAY" aria-label="Relay" aria-pressed="false"></button>
-            <button class="svg-hotspot svg-hotspot--right svg-right--05" type="button" data-action="LIFELINE" aria-label="Lifeline" aria-pressed="false"></button>
+            <button class="svg-hotspot svg-hotspot--right svg-right--01 is-active" type="button" data-action="VECTOR" aria-label="Abrir arrivals del sector Vector" aria-pressed="true"></button>
+            <button class="svg-hotspot svg-hotspot--right svg-right--02" type="button" data-action="ZENITH" aria-label="Abrir arrivals del sector Zenith" aria-pressed="false"></button>
+            <button class="svg-hotspot svg-hotspot--right svg-right--03" type="button" data-action="JUNCTION" aria-label="Abrir arrivals del sector Junction" aria-pressed="false"></button>
+            <button class="svg-hotspot svg-hotspot--right svg-right--04" type="button" data-action="RELAY" aria-label="Abrir arrivals del sector Relay" aria-pressed="false"></button>
+            <button class="svg-hotspot svg-hotspot--right svg-right--05" type="button" data-action="LIFELINE" aria-label="Abrir arrivals del sector Lifeline" aria-pressed="false"></button>
           </nav>
 
           <div class="svg-utility-actions" role="group" aria-label="Acceso al terminal de pago">
@@ -145,6 +145,72 @@
         </section>
 
         <section
+          class="arrivals-board"
+          id="arrivalsBoard"
+          role="dialog"
+          aria-modal="true"
+          aria-hidden="true"
+          aria-labelledby="arrivalsTitle"
+          inert
+        >
+          <div class="arrivals-backplane" aria-hidden="true"></div>
+
+          <header class="arrivals-header">
+            <div class="arrivals-heading">
+              <img
+                class="arrivals-header-logo"
+                src="assets/transrollinfyah.svg"
+                alt="Transroll"
+              >
+              <div>
+                <span class="arrivals-kicker">INTERPLANETARY TRANSIT // LIVE FEED</span>
+                <h2 id="arrivalsTitle">ARRIVALS</h2>
+              </div>
+            </div>
+
+            <div class="arrivals-controls">
+              <span class="arrivals-control is-active"><i></i> LIVE</span>
+              <span class="arrivals-sector" id="arrivalsSector">VECTOR // 01</span>
+              <button
+                class="arrivals-close"
+                id="arrivalsClose"
+                type="button"
+                aria-label="Cerrar tablón de arrivals"
+              >
+                <span></span><span></span>
+              </button>
+            </div>
+          </header>
+
+          <div class="arrivals-columns" aria-hidden="true">
+            <span>TIME</span>
+            <span>ORIGIN</span>
+            <span>FLIGHT</span>
+            <span>GATE</span>
+            <span>STATUS</span>
+          </div>
+
+          <!-- [html-validate-disable-next prefer-native-element] -->
+          <div
+            class="arrivals-list"
+            id="arrivalsList"
+            role="table"
+            aria-label="Llegadas interplanetarias"
+            aria-live="polite"
+          ></div>
+
+          <footer class="arrivals-footer">
+            <div class="arrivals-feed-status">
+              <i></i>
+              <span>TRANSIT FEED <b id="arrivalsFeedCode">43-A // ONLINE</b></span>
+            </div>
+            <div class="arrivals-pulse" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </footer>
+        </section>
+
+        <section
           class="payment-flow"
           id="paymentFlow"
           role="dialog"
@@ -166,7 +232,8 @@
             <div class="payment-status"><i></i> ENCRYPTED</div>
           </header>
 
-          <div class="payment-steps" aria-label="Progreso del pago">
+          <!-- [html-validate-disable-next prefer-native-element] -->
+          <div class="payment-steps" role="list" aria-label="Progreso del pago">
             <span class="is-active" data-payment-step="cards"><b>01</b> CARD</span>
             <i></i>
             <span data-payment-step="pin"><b>02</b> DATA</span>
@@ -249,10 +316,10 @@
 
                 <div class="payment-keypad-panel">
                   <span class="payment-keypad-label">SECURE PIN // 4 DIGITS</span>
-                  <div class="payment-pin-dots" id="paymentPinDots" aria-label="PIN vacío">
+                  <div class="payment-pin-dots" id="paymentPinDots" role="status" aria-label="PIN vacío">
                     <i></i><i></i><i></i><i></i>
                   </div>
-                  <div class="payment-keypad" aria-label="Teclado numérico">
+                  <div class="payment-keypad" role="group" aria-label="Teclado numérico">
                     <button type="button" data-payment-key="1">1<small>QZ</small></button>
                     <button type="button" data-payment-key="2">2<small>ABC</small></button>
                     <button type="button" data-payment-key="3">3<small>DEF</small></button>
