@@ -1140,13 +1140,13 @@ button:focus-visible {
   --arrivals-magenta: #bd7897;
   position: absolute;
   z-index: 56;
-  top: 12.2%;
+  top: 11.4%;
   left: 16.4%;
   display: flex;
   width: 71.2%;
-  height: 49.6%;
+  height: 51.2%;
   flex-direction: column;
-  padding: 30px 34px 24px;
+  padding: 46px 52px 38px;
   overflow: hidden;
   visibility: hidden;
   opacity: 0;
@@ -1403,7 +1403,7 @@ button:focus-visible {
   display: grid;
   flex: 1;
   min-height: 0;
-  grid-template-rows: repeat(9, 74px);
+  grid-template-rows: repeat(9, 70px);
   align-content: start;
   gap: 10px;
 }
@@ -1559,31 +1559,131 @@ button:focus-visible {
   color: var(--arrivals-primary);
 }
 
-.arrivals-pulse {
-  display: flex;
-  height: 34px;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 14px 7px;
-  border-bottom: 1px solid rgba(158, 199, 211, 0.24);
+.arrivals-landing-led {
+  position: relative;
+  width: 260px;
+  height: 68px;
+  justify-self: end;
+  overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(169, 189, 196, 0.24) 1px, transparent 1.5px),
+    linear-gradient(90deg, rgba(92, 107, 125, 0.08), rgba(155, 124, 139, 0.05));
+  background-size: 10px 10px, auto;
+  border-right: 1px solid rgba(155, 124, 139, 0.26);
+  border-bottom: 1px solid rgba(169, 189, 196, 0.28);
+  border-left: 1px solid rgba(92, 107, 125, 0.26);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
 
-.arrivals-pulse i {
-  width: 4px;
-  height: calc(5px + var(--pulse-height, 1) * 3px);
-  background: linear-gradient(var(--arrivals-magenta), var(--arrivals-secondary), var(--arrivals-violet));
-  box-shadow: 0 0 5px rgba(158, 199, 211, 0.45);
-  animation: arrivals-pulse 1.1s ease-in-out infinite alternate;
+.arrivals-landing-led > b {
+  position: absolute;
+  z-index: 5;
+  top: 7px;
+  left: 10px;
+  max-width: 102px;
+  overflow: hidden;
+  font-size: 6px;
+  font-weight: 400;
+  letter-spacing: 1.4px;
+  color: rgba(169, 189, 196, 0.7);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.arrivals-pulse i:nth-child(2) { --pulse-height: 4; animation-delay: -0.6s; }
-.arrivals-pulse i:nth-child(3) { --pulse-height: 7; animation-delay: -0.2s; }
-.arrivals-pulse i:nth-child(4) { --pulse-height: 3; animation-delay: -0.8s; }
-.arrivals-pulse i:nth-child(5) { --pulse-height: 8; animation-delay: -0.4s; }
-.arrivals-pulse i:nth-child(6) { --pulse-height: 5; animation-delay: -0.9s; }
-.arrivals-pulse i:nth-child(7) { --pulse-height: 2; animation-delay: -0.1s; }
-.arrivals-pulse i:nth-child(8) { --pulse-height: 6; animation-delay: -0.7s; }
+.arrival-ship-led {
+  position: absolute;
+  z-index: 4;
+  top: 3px;
+  left: 62%;
+  display: block;
+  width: 46px;
+  height: 24px;
+  transform: translate(-50%, -12px) scale(0.76);
+  filter: drop-shadow(0 0 7px rgba(169, 189, 196, 0.7));
+  animation: arrival-ship-land 4.8s cubic-bezier(0.34, 0.08, 0.22, 1) infinite;
+}
+
+.arrival-ship-led::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(110deg, var(--arrivals-violet), var(--arrivals-primary) 48%, var(--arrivals-secondary));
+  clip-path: polygon(50% 0, 62% 30%, 94% 55%, 80% 72%, 63% 65%, 57% 100%, 43% 100%, 37% 65%, 20% 72%, 6% 55%, 38% 30%);
+}
+
+.arrival-ship-led::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(217, 223, 224, 0.84);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: #5c6b7d;
+  box-shadow: 0 0 6px rgba(169, 189, 196, 0.72);
+}
+
+.arrival-ship-led i {
+  position: absolute;
+  z-index: -1;
+  bottom: -7px;
+  left: 50%;
+  width: 2px;
+  height: 10px;
+  transform: translateX(-50%);
+  background: linear-gradient(var(--arrivals-primary), rgba(169, 189, 196, 0));
+  box-shadow: 0 0 5px var(--arrivals-secondary);
+  animation: arrival-thruster 180ms steps(2, end) infinite alternate;
+}
+
+.arrival-ship-led i:nth-child(1) { margin-left: -9px; height: 7px; }
+.arrival-ship-led i:nth-child(3) { margin-left: 9px; height: 7px; }
+
+.arrival-landing-beam {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  bottom: 13px;
+  left: 62%;
+  width: 34px;
+  transform: translateX(-50%);
+  opacity: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(169, 189, 196, 0.32),
+    rgba(92, 107, 125, 0.04) 68%,
+    transparent
+  );
+  clip-path: polygon(47% 0, 53% 0, 100% 100%, 0 100%);
+  animation: arrival-landing-beam 4.8s ease-in-out infinite;
+}
+
+.arrival-landing-pad {
+  position: absolute;
+  z-index: 3;
+  right: 42px;
+  bottom: 7px;
+  width: 76px;
+  height: 10px;
+  border-bottom: 2px solid var(--arrivals-secondary);
+  filter: drop-shadow(0 0 5px rgba(169, 189, 196, 0.6));
+}
+
+.arrival-landing-pad::before,
+.arrival-landing-pad::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  width: 10px;
+  height: 5px;
+  border: 1px solid var(--arrivals-violet);
+}
+
+.arrival-landing-pad::before { left: 5px; }
+.arrival-landing-pad::after { right: 5px; }
 
 .planetary-clock {
   position: absolute;
@@ -4108,11 +4208,6 @@ button:focus-visible {
     drop-shadow(0 0 10px rgba(169, 189, 196, 0.34));
 }
 
-.arrivals-pulse i {
-  background: linear-gradient(var(--magenta), var(--cyan), var(--violet));
-  box-shadow: 0 0 5px rgba(169, 189, 196, 0.4);
-}
-
 @keyframes svg-art-react {
   0%,
   100% {
@@ -4532,10 +4627,55 @@ button:focus-visible {
   }
 }
 
-@keyframes arrivals-pulse {
+@keyframes arrival-ship-land {
+  0%,
+  12% {
+    opacity: 0.18;
+    transform: translate(-50%, -14px) scale(0.72);
+  }
+
+  28% {
+    opacity: 1;
+  }
+
+  66% {
+    opacity: 1;
+    transform: translate(-50%, 17px) scale(0.94);
+  }
+
+  76%,
+  91% {
+    opacity: 1;
+    transform: translate(-50%, 27px) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 27px) scale(1);
+  }
+}
+
+@keyframes arrival-landing-beam {
+  0%,
+  36%,
+  100% {
+    opacity: 0;
+  }
+
+  54% {
+    opacity: 0.38;
+  }
+
+  72%,
+  90% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes arrival-thruster {
   to {
-    height: 7px;
-    opacity: 0.34;
+    height: 5px;
+    opacity: 0.48;
   }
 }
 

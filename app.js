@@ -54,6 +54,7 @@
   const arrivalsList = document.querySelector("#arrivalsList");
   const arrivalsSector = document.querySelector("#arrivalsSector");
   const arrivalsFeedCode = document.querySelector("#arrivalsFeedCode");
+  const arrivalLandingStatus = document.querySelector("#arrivalLandingStatus");
 
   let activeNode = 0;
   let draggingSlider = false;
@@ -432,6 +433,7 @@
 
     arrivalsSector.textContent = profile.label;
     arrivalsFeedCode.textContent = profile.feed;
+    arrivalLandingStatus.textContent = `DESCENT // ${activeArrivalsAction}`;
 
     for (let rowIndex = 0; rowIndex < arrivalRows.length; rowIndex += 1) {
       const sourceIndex = (rowIndex + profile.rowOffset + arrivalsCycle) % arrivalRows.length;
