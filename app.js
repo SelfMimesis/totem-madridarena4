@@ -46,9 +46,13 @@
   const paymentMatchRate = document.querySelector("#paymentMatchRate");
   const paymentTransaction = document.querySelector("#paymentTransaction");
   const paymentReceiptTotal = document.querySelector("#paymentReceiptTotal");
+  const planetaryClock = document.querySelector("#planetaryClock");
+  const planetaryClockClose = document.querySelector("#planetaryClockClose");
+  const planetClockCards = [...document.querySelectorAll("[data-planet-clock]")];
 
   let activeNode = 0;
   let draggingSlider = false;
+  let sliderGesture = null;
   let toastTimer = 0;
   let lastFullscreenTap = 0;
   let fullscreenRequest = null;
@@ -65,6 +69,8 @@
   let lastPaymentFocusedElement = null;
   let paymentCardSwipe = null;
   let suppressPaymentCardClick = false;
+  let planetaryClockTimer = 0;
+  let lastClockFocusedElement = null;
   const lastButtonAnimation = new WeakMap();
 
   const actionNotifications = {
@@ -85,6 +91,13 @@
   ];
 
   const paymentScreenOrder = ["cards", "pin", "fingerprint", "success"];
+  const planetaryTimes = {
+    ganaka: { rate: 1.09, seed: 5 * 60 * 60 * 1000 + 17 * 60 * 1000 + 32 * 1000 },
+    portfree: { rate: 0.83, seed: 18 * 60 * 60 * 1000 + 42 * 60 * 1000 + 8 * 1000 },
+    ravyhyral: { rate: 1.34, seed: 11 * 60 * 60 * 1000 + 3 * 60 * 1000 + 51 * 1000 },
+    rim: { rate: 0.67, seed: 23 * 60 * 60 * 1000 + 58 * 60 * 1000 + 19 * 1000 },
+  };
+  const planetaryEpoch = Date.UTC(2026, 0, 1);
 
   function fitStage() {
     const scale = Math.min(window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
@@ -259,6 +272,10 @@
     if (event.button !== undefined && event.button !== 0) return;
     const previousNode = activeNode;
     draggingSlider = true;
+    sliderGesture = {
+      startY: event.clientY,
+      pointerType: event.pointerType,
+    };
     leftSlider.classList.add("is-dragging");
     leftSlider.setPointerCapture?.(event.pointerId);
     selectNodeFromPointer(event);
@@ -276,15 +293,30 @@
 
   function endSliderDrag(event) {
     if (!draggingSlider) return;
+    const gesture = sliderGesture;
     draggingSlider = false;
+    sliderGesture = null;
     leftSlider.classList.remove("is-dragging");
     leftSlider.releasePointerCapture?.(event.pointerId);
     showToast(`${sliderNodes[activeNode].dataset.label} // LOCKED`);
+    if (gesture && gesture.pointerType !== "mouse") {
+      const travel = event.clientY - gesture.startY;
+      const threshold = Math.max(38, leftSlider.getBoundingClientRect().height * 0.07);
+      if (travel > threshold) {
+        openPlanetaryClock(leftSlider);
+      } else if (travel < -threshold) {
+        closePlanetaryClock();
+      }
+    }
     event.preventDefault();
   }
 
   function openSignalModal() {
-    if (signalModal.classList.contains("is-open") || paymentFlow.classList.contains("is-open")) return;
+    if (
+      signalModal.classList.contains("is-open") ||
+      paymentFlow.classList.contains("is-open") ||
+      planetaryClock.classList.contains("is-open")
+    ) return;
     hideControlNotification();
     lastFocusedElement = document.activeElement;
     terminal.classList.add("is-obscured");
@@ -308,6 +340,74 @@
       lastFocusedElement.focus({ preventScroll: true });
     }
     pulseHaptic(14);
+  }
+
+  function formatPlanetaryTime(milliseconds) {
+    const day = 24 * 60 * 60 * 1000;
+    const normalized = ((milliseconds % day) + day) % day;
+    const totalSeconds = Math.floor(normalized / 1000);
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+    const seconds = String(totalSeconds % 60).padStart(2, "0");
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
+  function updatePlanetaryClock() {
+    const elapsed = Date.now() - planetaryEpoch;
+    planetClockCards.forEach((card) => {
+      const planet = planetaryTimes[card.dataset.planetClock];
+      const timeElement = card.querySelector("time");
+      if (!planet || !timeElement) return;
+      const planetMilliseconds = planet.seed + elapsed * planet.rate;
+      const formattedTime = formatPlanetaryTime(planetMilliseconds);
+      timeElement.textContent = formattedTime;
+      timeElement.dateTime = formattedTime;
+      card.style.setProperty("--planet-phase", `${(planetMilliseconds / 240000) % 360}deg`);
+    });
+  }
+
+  function openPlanetaryClock(trigger) {
+    if (
+      planetaryClock.classList.contains("is-open") ||
+      paymentFlow.classList.contains("is-open") ||
+      signalModal.classList.contains("is-open")
+    ) return;
+    hideControlNotification();
+    lastClockFocusedElement = trigger || document.activeElement;
+    updatePlanetaryClock();
+    window.clearInterval(planetaryClockTimer);
+    planetaryClockTimer = window.setInterval(updatePlanetaryClock, 250);
+    terminal.classList.add("is-clock-open");
+    planetaryClock.classList.add("is-open");
+    planetaryClock.setAttribute("aria-hidden", "false");
+    planetaryClock.inert = false;
+    planetaryClockClose.focus({ preventScroll: true });
+    pulseHaptic([16, 28, 16]);
+    showToast("ORBITAL TIME ARRAY // SYNCHRONIZED");
+  }
+
+  function closePlanetaryClock() {
+    if (!planetaryClock.classList.contains("is-open")) return;
+    window.clearInterval(planetaryClockTimer);
+    planetaryClockTimer = 0;
+    planetaryClock.classList.remove("is-open");
+    planetaryClock.setAttribute("aria-hidden", "true");
+    planetaryClock.inert = true;
+    terminal.classList.remove("is-clock-open");
+    if (lastClockFocusedElement instanceof HTMLElement) {
+      lastClockFocusedElement.focus({ preventScroll: true });
+    }
+    pulseHaptic(12);
+  }
+
+  function handlePlanetaryClockScroll(event) {
+    if (Math.abs(event.deltaY) < 4) return;
+    if (event.deltaY > 0) {
+      openPlanetaryClock(leftSlider);
+    } else {
+      closePlanetaryClock();
+    }
+    event.preventDefault();
   }
 
   function clearFingerprintTimers() {
@@ -539,7 +639,7 @@
   }
 
   function openPaymentFlow(trigger) {
-    if (paymentFlow.classList.contains("is-open")) return;
+    if (paymentFlow.classList.contains("is-open") || planetaryClock.classList.contains("is-open")) return;
     hideControlNotification();
     window.clearTimeout(toastTimer);
     toast.classList.remove("is-visible");
@@ -606,13 +706,13 @@
     paymentFingerprint.classList.remove("is-verified");
     paymentFingerprint.classList.add("is-scanning");
     paymentFingerprintStatus.textContent = "SCANNING BIOMETRICS";
-    paymentMatchRate.textContent = "08.40%";
-    let matchRate = 8.4;
+    paymentMatchRate.textContent = "12.60%";
+    let matchRate = 12.6;
 
     fingerprintInterval = window.setInterval(() => {
-      matchRate = Math.min(97.6, matchRate + 5.6);
+      matchRate = Math.min(97.6, matchRate + 7.1);
       paymentMatchRate.textContent = `${matchRate.toFixed(2)}%`;
-    }, 90);
+    }, 60);
 
     fingerprintTimer = window.setTimeout(() => {
       window.clearInterval(fingerprintInterval);
@@ -622,8 +722,8 @@
       paymentFingerprintStatus.textContent = "IDENTITY VERIFIED";
       paymentMatchRate.textContent = "99.98%";
       pulseHaptic([14, 24, 28]);
-      fingerprintCompleteTimer = window.setTimeout(completePayment, 650);
-    }, 1600);
+      fingerprintCompleteTimer = window.setTimeout(completePayment, 360);
+    }, 850);
   }
 
   function selectAction(button) {
@@ -723,11 +823,13 @@
 
   function trapModalFocus(event) {
     if (event.key !== "Tab") return;
-    const activeDialog = paymentFlow.classList.contains("is-open")
-      ? paymentFlow
-      : signalModal.classList.contains("is-open")
-        ? signalModal
-        : null;
+    const activeDialog = planetaryClock.classList.contains("is-open")
+      ? planetaryClock
+      : paymentFlow.classList.contains("is-open")
+        ? paymentFlow
+        : signalModal.classList.contains("is-open")
+          ? signalModal
+          : null;
     if (!activeDialog) return;
 
     const focusableElements = [...activeDialog.querySelectorAll("button:not(:disabled), [href], [tabindex]:not([tabindex='-1'])")]
@@ -821,6 +923,8 @@
   leftSlider.addEventListener("pointermove", moveSlider);
   leftSlider.addEventListener("pointerup", endSliderDrag);
   leftSlider.addEventListener("pointercancel", endSliderDrag);
+  leftSlider.addEventListener("wheel", handlePlanetaryClockScroll, { passive: false });
+  planetaryClockClose.addEventListener("click", closePlanetaryClock);
   videoTrigger.addEventListener("click", openSignalModal);
   modalClose.addEventListener("click", closeSignalModal);
   fullscreenHotspot.addEventListener("pointerup", handleFullscreenHotspot);
@@ -835,11 +939,28 @@
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      if (paymentFlow.classList.contains("is-open")) {
+      if (planetaryClock.classList.contains("is-open")) {
+        closePlanetaryClock();
+      } else if (paymentFlow.classList.contains("is-open")) {
         closePaymentFlow();
       } else {
         closeSignalModal();
       }
+    }
+
+    if (
+      event.key === "PageDown" &&
+      document.activeElement?.closest?.("#leftSlider") &&
+      !planetaryClock.classList.contains("is-open")
+    ) {
+      event.preventDefault();
+      openPlanetaryClock(leftSlider);
+    } else if (
+      event.key === "PageUp" &&
+      planetaryClock.classList.contains("is-open")
+    ) {
+      event.preventDefault();
+      closePlanetaryClock();
     }
 
     if (paymentFlow.classList.contains("is-open")) {
@@ -867,7 +988,8 @@
     if (
       event.key.toLowerCase() === "f" &&
       !signalModal.classList.contains("is-open") &&
-      !paymentFlow.classList.contains("is-open")
+      !paymentFlow.classList.contains("is-open") &&
+      !planetaryClock.classList.contains("is-open")
     ) {
       if (fullscreenElement()) {
         exitFullscreen();

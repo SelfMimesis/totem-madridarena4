@@ -1,4 +1,4 @@
-# Embarkation Zone — Totem 02
+# Embarkation Zone — Totem 03
 
 Interfaz táctil 4K vertical (2160 × 3840) construida con HTML, CSS y JavaScript sin dependencias.
 
@@ -6,6 +6,8 @@ Interfaz táctil 4K vertical (2160 × 3840) construida con HTML, CSS y JavaScrip
 
 - Tocar el vídeo central abre el panel LED animado y desenfoca el vídeo.
 - El selector izquierdo admite toque, arrastre vertical y teclado.
+- Desplazar el selector izquierdo hacia abajo abre el reloj orbital de Ganaka pit,
+  Portfreecommerce, ravyhyral y rim; desplazar hacia arriba lo cierra.
 - Los controles derechos responden al toque.
 - Los dos controles inferiores abren un pago guiado con carrusel de tarjetas, PIN y huella.
 - El pago confirma la compra y vuelve automáticamente al terminal.
