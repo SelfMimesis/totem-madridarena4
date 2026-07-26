@@ -1316,6 +1316,11 @@ button:focus-visible {
   animation: payment-screen-in 420ms cubic-bezier(0.18, 0.82, 0.22, 1);
 }
 
+.payment-screen.payment-screen--cards,
+.payment-screen.payment-screen--cards * {
+  font-family: "Automatron", monospace !important;
+}
+
 .payment-screen-heading {
   flex: 0 0 auto;
   padding-top: 9px;
@@ -1367,6 +1372,13 @@ button:focus-visible {
   width: 100%;
   height: 100%;
   min-height: 420px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.payment-card-stack.is-swiping {
+  cursor: grabbing;
 }
 
 .payment-card {
@@ -1381,11 +1393,17 @@ button:focus-visible {
   background: transparent;
   transform: translate(-50%, -50%) scale(0.55);
   transition:
-    left 520ms cubic-bezier(0.2, 0.78, 0.18, 1),
-    opacity 360ms ease,
-    transform 520ms cubic-bezier(0.2, 0.78, 0.18, 1),
-    filter 360ms ease;
+    left 560ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 420ms ease,
+    transform 560ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 420ms ease;
   transform-origin: center;
+  will-change: left, opacity, transform;
+}
+
+.payment-card-stack.is-swiping .payment-card,
+.payment-card-stack.is-swiping .payment-card::after {
+  transition: none;
 }
 
 .payment-card img {
@@ -1763,10 +1781,18 @@ button:focus-visible {
 .payment-fingerprint::before {
   content: "";
   position: absolute;
-  width: 330px;
-  height: 330px;
-  border: 2px dashed rgba(167, 162, 186, 0.42);
+  width: 342px;
+  height: 342px;
+  background:
+    linear-gradient(var(--cyan), var(--cyan)) 50% 0 / 42px 2px no-repeat,
+    linear-gradient(var(--cyan), var(--cyan)) 50% 100% / 42px 2px no-repeat,
+    linear-gradient(90deg, var(--cyan), var(--cyan)) 0 50% / 2px 42px no-repeat,
+    linear-gradient(90deg, var(--cyan), var(--cyan)) 100% 50% / 2px 42px no-repeat;
+  border: 1px dashed rgba(167, 162, 186, 0.36);
   border-radius: 50%;
+  box-shadow:
+    inset 0 0 32px rgba(158, 199, 211, 0.07),
+    0 0 32px rgba(158, 199, 211, 0.08);
   animation: payment-fingerprint-orbit 12s linear infinite;
 }
 
@@ -1799,29 +1825,81 @@ button:focus-visible {
   mask-image: radial-gradient(circle, black, transparent 72%);
 }
 
-.payment-fingerprint svg {
+.payment-fingerprint .bio-print {
   position: relative;
   z-index: 2;
-  width: 190px;
-  height: 240px;
+  width: 238px;
+  height: 278px;
   overflow: visible;
   fill: none;
-  stroke: var(--cyan);
-  stroke-width: 4;
+  stroke: var(--cyan-soft);
+  stroke-width: 3;
   stroke-linecap: round;
+  stroke-linejoin: round;
   filter: drop-shadow(0 0 7px rgba(158, 199, 211, 0.76));
   transition: stroke 300ms ease, filter 300ms ease, transform 300ms ease;
 }
 
-.payment-fingerprint.is-scanning svg {
+.bio-print__target {
+  opacity: 0.54;
+  stroke-width: 2;
+}
+
+.bio-print__target path:last-child {
+  opacity: 0.6;
+  stroke-dasharray: 4 7;
+}
+
+.bio-print__ridges {
+  stroke-dasharray: 9 5 22 4;
+}
+
+.bio-print__ridges path:nth-child(2n) {
+  opacity: 0.72;
+  stroke-dasharray: 30 6 8 5;
+}
+
+.bio-print__circuit {
+  stroke: var(--violet);
+  stroke-width: 2;
+}
+
+.bio-print__circuit circle {
+  fill: rgba(8, 14, 18, 0.95);
+  stroke-width: 2;
+}
+
+.bio-print__core {
+  fill: rgba(158, 199, 211, 0.1);
+  stroke: white;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 8px var(--cyan));
+  transform-origin: 120px 122px;
+  animation: payment-fingerprint-core 2.4s ease-in-out infinite;
+}
+
+.bio-print__core circle {
+  fill: var(--cyan-soft);
+  stroke: none;
+}
+
+.payment-fingerprint.is-scanning .bio-print {
   stroke: var(--cyan-soft);
   filter: drop-shadow(0 0 10px var(--cyan)) drop-shadow(0 0 22px rgba(158, 199, 211, 0.58));
   animation: payment-fingerprint-pulse 620ms ease-in-out infinite alternate;
 }
 
-.payment-fingerprint.is-verified svg {
+.payment-fingerprint.is-scanning .bio-print__ridges {
+  animation: payment-fingerprint-data 620ms linear infinite;
+}
+
+.payment-fingerprint.is-verified .bio-print {
   stroke: var(--violet);
   filter: drop-shadow(0 0 12px var(--violet));
+}
+
+.payment-fingerprint.is-verified .bio-print__core circle {
+  fill: var(--violet);
 }
 
 .payment-fingerprint-copy {
@@ -3219,6 +3297,19 @@ button:focus-visible {
   to {
     transform: scale(1.035);
     opacity: 0.78;
+  }
+}
+
+@keyframes payment-fingerprint-data {
+  to {
+    stroke-dashoffset: -42;
+  }
+}
+
+@keyframes payment-fingerprint-core {
+  50% {
+    opacity: 0.58;
+    transform: scale(0.84) rotate(30deg);
   }
 }
 

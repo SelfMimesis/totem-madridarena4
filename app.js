@@ -30,6 +30,7 @@
   const paymentSteps = [...document.querySelectorAll("[data-payment-step]")];
   const paymentCards = [...document.querySelectorAll("[data-payment-card]")];
   const paymentDots = [...document.querySelectorAll(".payment-carousel-dots i")];
+  const paymentCardStack = document.querySelector(".payment-card-stack");
   const paymentPrev = document.querySelector("#paymentPrev");
   const paymentNext = document.querySelector("#paymentNext");
   const paymentCardConfirm = document.querySelector("#paymentCardConfirm");
@@ -62,6 +63,8 @@
   let fingerprintCompleteTimer = 0;
   let fingerprintInterval = 0;
   let lastPaymentFocusedElement = null;
+  let paymentCardSwipe = null;
+  let suppressPaymentCardClick = false;
   const lastButtonAnimation = new WeakMap();
 
   const actionNotifications = {
@@ -316,6 +319,145 @@
     fingerprintInterval = 0;
   }
 
+  function clearPaymentCardSwipeStyles() {
+    paymentCards.forEach((card) => {
+      card.style.removeProperty("left");
+      card.style.removeProperty("opacity");
+      card.style.removeProperty("filter");
+      card.style.removeProperty("transform");
+      card.style.removeProperty("z-index");
+    });
+  }
+
+  function resetPaymentCardSwipe() {
+    if (paymentCardSwipe && paymentCardStack.hasPointerCapture?.(paymentCardSwipe.pointerId)) {
+      paymentCardStack.releasePointerCapture(paymentCardSwipe.pointerId);
+    }
+    paymentCardSwipe = null;
+    paymentCardStack.classList.remove("is-swiping");
+    clearPaymentCardSwipeStyles();
+  }
+
+  function renderPaymentCardSwipe(viewportDeltaX) {
+    const swipe = paymentCardSwipe;
+    if (!swipe) return;
+
+    const localDeltaX = viewportDeltaX * swipe.localScale;
+    const progress = Math.min(1, Math.abs(viewportDeltaX) / (swipe.viewportWidth * 0.46));
+    const direction = viewportDeltaX < 0 ? 1 : -1;
+    const incomingIndex = (activePaymentCard + direction + paymentCards.length) % paymentCards.length;
+    const activeCard = paymentCards[activePaymentCard];
+    const incomingCard = paymentCards[incomingIndex];
+    const activeRotation = (localDeltaX / paymentCardStack.clientWidth) * 9;
+    const incomingStartLeft = direction > 0 ? 88 : 12;
+    const incomingLeft = incomingStartLeft + (50 - incomingStartLeft) * progress;
+    const incomingRotation = direction * 8 * (1 - progress);
+
+    paymentCards.forEach((card) => {
+      if (card === activeCard || card === incomingCard) return;
+      card.style.removeProperty("left");
+      card.style.removeProperty("opacity");
+      card.style.removeProperty("filter");
+      card.style.removeProperty("transform");
+      card.style.removeProperty("z-index");
+    });
+
+    activeCard.style.left = "50%";
+    activeCard.style.zIndex = "4";
+    activeCard.style.opacity = String(1 - progress * 0.58);
+    activeCard.style.filter = `saturate(${1 - progress * 0.34}) brightness(${1 - progress * 0.2})`;
+    activeCard.style.transform =
+      `translate(calc(-50% + ${localDeltaX}px), -50%) scale(${1 - progress * 0.12}) rotate(${activeRotation}deg)`;
+
+    incomingCard.style.left = `${incomingLeft}%`;
+    incomingCard.style.zIndex = "3";
+    incomingCard.style.opacity = String(0.33 + progress * 0.67);
+    incomingCard.style.filter =
+      `saturate(${0.58 + progress * 0.42}) brightness(${0.72 + progress * 0.28})`;
+    incomingCard.style.transform =
+      `translate(-50%, -50%) scale(${0.62 + progress * 0.38}) rotate(${incomingRotation}deg)`;
+  }
+
+  function startPaymentCardSwipe(event) {
+    if (paymentScreenName !== "cards" || paymentCardSwipe || (event.pointerType === "mouse" && event.button !== 0)) {
+      return;
+    }
+
+    const bounds = paymentCardStack.getBoundingClientRect();
+    if (!bounds.width) return;
+
+    paymentCardSwipe = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      lastTime: event.timeStamp,
+      deltaX: 0,
+      velocityX: 0,
+      viewportWidth: bounds.width,
+      localScale: paymentCardStack.clientWidth / bounds.width,
+      axis: null,
+      dragged: false,
+    };
+    paymentCardStack.setPointerCapture?.(event.pointerId);
+  }
+
+  function movePaymentCardSwipe(event) {
+    const swipe = paymentCardSwipe;
+    if (!swipe || event.pointerId !== swipe.pointerId) return;
+
+    const deltaX = event.clientX - swipe.startX;
+    const deltaY = event.clientY - swipe.startY;
+
+    if (!swipe.axis) {
+      if (Math.hypot(deltaX, deltaY) < 7) return;
+      swipe.axis = Math.abs(deltaX) > Math.abs(deltaY) ? "horizontal" : "vertical";
+    }
+    if (swipe.axis !== "horizontal") return;
+
+    const elapsed = Math.max(1, event.timeStamp - swipe.lastTime);
+    const instantaneousVelocity = (event.clientX - swipe.lastX) / elapsed;
+    swipe.velocityX = swipe.velocityX * 0.68 + instantaneousVelocity * 0.32;
+    swipe.lastX = event.clientX;
+    swipe.lastTime = event.timeStamp;
+    swipe.deltaX = deltaX;
+    swipe.dragged = true;
+
+    paymentCardStack.classList.add("is-swiping");
+    renderPaymentCardSwipe(deltaX);
+    event.preventDefault();
+  }
+
+  function endPaymentCardSwipe(event, cancelled = false) {
+    const swipe = paymentCardSwipe;
+    if (!swipe || event.pointerId !== swipe.pointerId) return;
+
+    if (paymentCardStack.hasPointerCapture?.(event.pointerId)) {
+      paymentCardStack.releasePointerCapture(event.pointerId);
+    }
+
+    const distanceThreshold = Math.min(72, Math.max(32, swipe.viewportWidth * 0.18));
+    const isFastSwipe = Math.abs(swipe.deltaX) > 18 && Math.abs(swipe.velocityX) > 0.42;
+    const shouldChange =
+      !cancelled && swipe.axis === "horizontal" &&
+      (Math.abs(swipe.deltaX) >= distanceThreshold || isFastSwipe);
+    const direction = swipe.deltaX < 0 ? 1 : -1;
+
+    paymentCardSwipe = null;
+    paymentCardStack.classList.remove("is-swiping");
+    if (shouldChange) {
+      updatePaymentCard(activePaymentCard + direction);
+    }
+    clearPaymentCardSwipeStyles();
+
+    if (swipe.dragged) {
+      suppressPaymentCardClick = true;
+      window.setTimeout(() => {
+        suppressPaymentCardClick = false;
+      }, 0);
+    }
+  }
+
   function updatePaymentCard(index, haptic = true) {
     const cardCount = paymentCards.length;
     activePaymentCard = (index + cardCount) % cardCount;
@@ -385,6 +527,7 @@
   function resetPaymentFlow() {
     window.clearTimeout(paymentCloseTimer);
     clearFingerprintTimers();
+    resetPaymentCardSwipe();
     paymentPin = "";
     paymentFingerprint.disabled = false;
     paymentFingerprint.classList.remove("is-scanning", "is-verified");
@@ -639,11 +782,19 @@
   });
 
   paymentCards.forEach((card) => {
-    card.addEventListener("click", () => {
+    card.addEventListener("click", (event) => {
+      if (suppressPaymentCardClick) {
+        event.preventDefault();
+        return;
+      }
       updatePaymentCard(Number(card.dataset.paymentCard));
     });
   });
 
+  paymentCardStack.addEventListener("pointerdown", startPaymentCardSwipe);
+  paymentCardStack.addEventListener("pointermove", movePaymentCardSwipe);
+  paymentCardStack.addEventListener("pointerup", endPaymentCardSwipe);
+  paymentCardStack.addEventListener("pointercancel", (event) => endPaymentCardSwipe(event, true));
   paymentPrev.addEventListener("click", () => updatePaymentCard(activePaymentCard - 1));
   paymentNext.addEventListener("click", () => updatePaymentCard(activePaymentCard + 1));
   paymentCardConfirm.addEventListener("click", () => {
