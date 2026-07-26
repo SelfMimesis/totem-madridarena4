@@ -400,6 +400,16 @@
     pulseHaptic(12);
   }
 
+  function handlePlanetaryClockOutsideClick(event) {
+    if (
+      !planetaryClock.classList.contains("is-open") ||
+      planetaryClock.contains(event.target)
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closePlanetaryClock();
+  }
+
   function handlePlanetaryClockScroll(event) {
     if (Math.abs(event.deltaY) < 4) return;
     if (event.deltaY > 0) {
@@ -925,6 +935,7 @@
   leftSlider.addEventListener("pointercancel", endSliderDrag);
   leftSlider.addEventListener("wheel", handlePlanetaryClockScroll, { passive: false });
   planetaryClockClose.addEventListener("click", closePlanetaryClock);
+  stage.addEventListener("click", handlePlanetaryClockOutsideClick, true);
   videoTrigger.addEventListener("click", openSignalModal);
   modalClose.addEventListener("click", closeSignalModal);
   fullscreenHotspot.addEventListener("pointerup", handleFullscreenHotspot);
